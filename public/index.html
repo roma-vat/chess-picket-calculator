@@ -1,0 +1,639 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Расчёт шахматки</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f5f6f8;
+      color: #1b1f24;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #f5f6f8;
+    }
+
+    button, input { font: inherit; }
+
+    .app {
+      width: min(960px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 40px 0 64px;
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid #e2e6ea;
+      border-radius: 18px;
+      box-shadow: 0 10px 30px rgba(18, 26, 33, 0.06);
+      padding: 28px;
+    }
+
+    h1 {
+      margin: 0 0 24px;
+      font-size: clamp(28px, 5vw, 42px);
+      line-height: 1.05;
+    }
+
+    h2 {
+      margin: 0 0 8px;
+      font-size: 24px;
+    }
+
+    .muted {
+      margin: 0 0 24px;
+      color: #66707a;
+      line-height: 1.5;
+    }
+
+    .screen[hidden] { display: none; }
+
+    .form-grid {
+      display: grid;
+      gap: 18px;
+      max-width: 520px;
+    }
+
+    label.field {
+      display: grid;
+      gap: 7px;
+      font-weight: 650;
+    }
+
+    .field span small {
+      color: #7c8791;
+      font-weight: 500;
+    }
+
+    input[type="number"] {
+      width: 100%;
+      min-height: 48px;
+      border: 1px solid #cfd5db;
+      border-radius: 11px;
+      padding: 10px 12px;
+      background: #fff;
+      color: #1b1f24;
+      outline: none;
+    }
+
+    input[type="number"]:focus {
+      border-color: #1b1f24;
+      box-shadow: 0 0 0 3px rgba(27, 31, 36, 0.08);
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 26px;
+    }
+
+    .button {
+      min-height: 46px;
+      border: 0;
+      border-radius: 11px;
+      padding: 0 18px;
+      cursor: pointer;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+
+    .button-primary {
+      background: #1b1f24;
+      color: #fff;
+    }
+
+    .button-secondary {
+      background: #edf0f2;
+      color: #1b1f24;
+    }
+
+    .error {
+      margin-top: 14px;
+      color: #b42318;
+      font-weight: 600;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid #e1e5e9;
+      border-radius: 13px;
+    }
+
+    table.options {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 560px;
+    }
+
+    .options th,
+    .options td {
+      padding: 13px 14px;
+      border-bottom: 1px solid #e8ebee;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .options th:first-child,
+    .options td:first-child { text-align: center; width: 56px; }
+
+    .options th:nth-child(2),
+    .options td:nth-child(2) { text-align: center; }
+
+    .options th {
+      background: #f8f9fa;
+      color: #4a535c;
+      font-size: 14px;
+    }
+
+    .options tbody tr:last-child td { border-bottom: 0; }
+    .options tbody tr { cursor: pointer; }
+    .options tbody tr:hover { background: #fafbfc; }
+    .options tbody tr.best { font-weight: 800; background: #f1f7f3; }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin: 20px 0 24px;
+    }
+
+    .summary-item {
+      border: 1px solid #e4e7ea;
+      border-radius: 12px;
+      padding: 14px;
+      background: #fafbfc;
+    }
+
+    .summary-item strong {
+      display: block;
+      margin-top: 4px;
+      font-size: 20px;
+    }
+
+    .scheme-shell {
+      width: 100%;
+    }
+
+    .vertical-scheme {
+      position: relative;
+      width: min(42px, 100%);
+      margin: 0 auto;
+      border: 1px solid #b9c0c7;
+      background: #f4f1e8;
+    }
+
+    .scheme-segment {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      position: relative;
+    }
+
+    .scheme-lane {
+      min-height: 10px;
+      border-left: 1px dashed #9aa3ac;
+    }
+
+    .scheme-lane:first-child { border-left: 0; }
+
+    .scheme-lane.picket {
+      background: #415a4a;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.28);
+    }
+
+    .coordinate-marker {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 0;
+      pointer-events: none;
+    }
+
+    .coordinate-marker::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      border-top: 1px solid rgba(93, 103, 112, .32);
+    }
+
+    .coordinate-marker span {
+      position: absolute;
+      top: 0;
+      transform: translateY(-50%);
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: #fff;
+      color: #4e5963;
+      font-size: 12px;
+      line-height: 1.3;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .coordinate-marker .left { right: calc(100% + 8px); }
+    .coordinate-marker .right { left: calc(100% + 8px); }
+
+    .scheme-frame {
+      display: grid;
+      grid-template-columns: minmax(46px, 1fr) 42px minmax(46px, 1fr);
+      align-items: stretch;
+      column-gap: 8px;
+      width: 100%;
+    }
+
+    .scheme-frame .vertical-scheme { grid-column: 2; }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-top: 16px;
+      color: #5c6670;
+      font-size: 14px;
+    }
+
+    .legend-item { display: inline-flex; align-items: center; gap: 8px; }
+    .swatch { width: 24px; height: 14px; border-radius: 4px; border: 1px solid #c7cdd3; }
+    .swatch.picket { background: #415a4a; }
+    .swatch.empty { background: #f4f1e8; }
+
+    @media (max-width: 640px) {
+      .app { width: min(100% - 20px, 960px); padding-top: 20px; }
+      .card { padding: 20px; border-radius: 14px; }
+      .summary { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="card">
+      <h1>Расчёт шахматки</h1>
+
+      <div id="screen-1" class="screen">
+        <h2>Исходные данные</h2>
+        <p class="muted">Введите размеры в одних и тех же единицах, например в миллиметрах.</p>
+
+        <div class="form-grid">
+          <label class="field">
+            <span>Длина секции (L)</span>
+            <input id="length" type="number" inputmode="decimal" min="0" step="any" placeholder="Например, 2500" />
+          </label>
+
+          <label class="field">
+            <span>Ширина штакета (a)</span>
+            <input id="picket-width" type="number" inputmode="decimal" min="0" step="any" placeholder="Например, 100" />
+          </label>
+
+          <label class="field">
+            <span>Желаемый зазор (b)</span>
+            <input id="desired-gap" type="number" inputmode="decimal" min="0" step="any" placeholder="Например, 50" />
+          </label>
+        </div>
+
+        <div id="screen-1-error" class="error" role="alert" hidden></div>
+
+        <div class="actions">
+          <button id="to-options" class="button button-primary" type="button">ДАЛЕЕ</button>
+        </div>
+      </div>
+
+      <div id="screen-2" class="screen" hidden>
+        <h2>Выберите количество штакетов</h2>
+        <p class="muted">Центральный вариант даёт зазор, наиболее близкий к желаемому.</p>
+
+        <div class="table-wrap">
+          <table class="options">
+            <thead>
+              <tr>
+                <th></th>
+                <th>Количество штакетов (N)</th>
+                <th>Зазор (b)</th>
+                <th>Δ к желаемому</th>
+              </tr>
+            </thead>
+            <tbody id="options-body"></tbody>
+          </table>
+        </div>
+
+        <div id="screen-2-error" class="error" role="alert" hidden></div>
+
+        <div class="actions">
+          <button id="back-to-input" class="button button-secondary" type="button">НАЗАД</button>
+          <button id="calculate" class="button button-primary" type="button">РАССЧИТАТЬ</button>
+        </div>
+      </div>
+
+      <div id="screen-3" class="screen" hidden>
+        <h2>Схема перекрёстного расположения</h2>
+        <p class="muted">Нечётные штакеты показаны на одной стороне секции, чётные — на другой.</p>
+
+        <div id="summary" class="summary"></div>
+
+        <div class="scheme-shell">
+          <div class="scheme-frame">
+            <div id="scheme" class="vertical-scheme" role="img" aria-label="Схема расположения штакетов"></div>
+          </div>
+        </div>
+
+        <div class="legend">
+          <span class="legend-item"><span class="swatch picket"></span> штакет</span>
+          <span class="legend-item"><span class="swatch empty"></span> зазор</span>
+        </div>
+
+        <div class="actions">
+          <button id="back-to-options" class="button button-secondary" type="button">НАЗАД</button>
+          <button id="start-over" class="button button-primary" type="button">ИЗМЕНИТЬ РАЗМЕРЫ</button>
+        </div>
+
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      const STORAGE_KEY = 'chess-picket-calculator:v1';
+      const $ = (selector) => document.querySelector(selector);
+
+      const els = {
+        screens: [$('#screen-1'), $('#screen-2'), $('#screen-3')],
+        length: $('#length'),
+        picketWidth: $('#picket-width'),
+        desiredGap: $('#desired-gap'),
+        inputError: $('#screen-1-error'),
+        optionsError: $('#screen-2-error'),
+        optionsBody: $('#options-body'),
+        summary: $('#summary'),
+        scheme: $('#scheme'),
+      };
+
+      let state = {
+        L: null,
+        a: null,
+        requestedB: null,
+        candidates: [],
+        selectedN: null,
+      };
+
+      function showScreen(index) {
+        els.screens.forEach((screen, i) => { screen.hidden = i !== index; });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      function showError(element, message) {
+        element.textContent = message;
+        element.hidden = !message;
+      }
+
+      function formatNumber(value, digits = 2) {
+        return new Intl.NumberFormat('ru-RU', {
+          maximumFractionDigits: digits,
+          minimumFractionDigits: 0,
+        }).format(value);
+      }
+
+      function signedPercent(value) {
+        const normalized = Math.abs(value) < 0.0005 ? 0 : value;
+        const sign = normalized >= 0 ? '+' : '−';
+        return `${sign}${formatNumber(Math.abs(normalized), 2)}%`;
+      }
+
+      function loadSavedValues() {
+        try {
+          const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+          if (Number.isFinite(saved.L)) els.length.value = saved.L;
+          if (Number.isFinite(saved.a)) els.picketWidth.value = saved.a;
+          if (Number.isFinite(saved.b)) els.desiredGap.value = saved.b;
+        } catch (_) {
+          // Повреждённые данные localStorage просто игнорируем.
+        }
+      }
+
+      function saveValues() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify({
+            L: state.L,
+            a: state.a,
+            b: state.requestedB,
+          }));
+        } catch (_) {
+          // На GitHub Pages localStorage доступен; при локальном file:// режим продолжит работать и без сохранения.
+        }
+      }
+
+      function readInputs() {
+        const L = Number(els.length.value);
+        const a = Number(els.picketWidth.value);
+        const requestedB = Number(els.desiredGap.value);
+
+        if (![L, a, requestedB].every(Number.isFinite)) {
+          throw new Error('Заполните все три поля числами.');
+        }
+        if (L <= 0 || a <= 0 || requestedB <= 0) {
+          throw new Error('Все значения должны быть больше нуля.');
+        }
+        if (a >= L) {
+          throw new Error('Ширина штакета должна быть меньше длины секции.');
+        }
+
+        return { L, a, requestedB };
+      }
+
+      function gapForN(L, a, N) {
+        if (!Number.isInteger(N) || N <= 1) return null;
+        const b = (a * N + a - 2 * L) / (1 - N);
+        return Number.isFinite(b) && b > 0 ? b : null;
+      }
+
+      function calculateCandidates(L, a, requestedB) {
+        const rawN = (-a + requestedB + 2 * L) / (a + requestedB);
+        const floorN = Math.floor(rawN);
+        const ceilN = Math.ceil(rawN);
+
+        const nearestPool = [...new Set([floorN, ceilN])]
+          .map((N) => ({ N, b: gapForN(L, a, N) }))
+          .filter((item) => item.b !== null)
+          .map((item) => ({
+            ...item,
+            distance: Math.abs(item.b - requestedB),
+          }));
+
+        if (!nearestPool.length) {
+          throw new Error('Для этих размеров не удалось получить осмысленный вариант расположения.');
+        }
+
+        nearestPool.sort((x, y) => x.distance - y.distance || x.N - y.N);
+        const centralN = nearestPool[0].N;
+
+        const rows = [];
+        for (let N = centralN - 3; N <= centralN + 3; N += 1) {
+          const b = gapForN(L, a, N);
+          if (b === null) continue;
+          rows.push({
+            N,
+            b,
+            deltaPercent: ((b - requestedB) / requestedB) * 100,
+            isBest: N === centralN,
+          });
+        }
+
+        return { rows, centralN };
+      }
+
+      function renderOptions() {
+        els.optionsBody.innerHTML = state.candidates.map((item) => `
+          <tr class="${item.isBest ? 'best' : ''}" data-n="${item.N}">
+            <td><input type="radio" name="candidate" value="${item.N}" ${item.N === state.selectedN ? 'checked' : ''} aria-label="Выбрать ${item.N} штакетов"></td>
+            <td>${item.N}</td>
+            <td>${formatNumber(item.b, 3)}</td>
+            <td>${signedPercent(item.deltaPercent)}</td>
+          </tr>
+        `).join('');
+      }
+
+      function picketIntervals(L, a, b, N) {
+        const result = [];
+        for (let n = 1; n <= N; n += 1) {
+          const start = ((n - 1) / 2) * (a + b);
+          const end = start + a;
+          const clippedStart = Math.max(0, Math.min(L, start));
+          const clippedEnd = Math.max(0, Math.min(L, end));
+          if (clippedEnd > clippedStart) {
+            result.push({ n, start: clippedStart, end: clippedEnd, side: n % 2 === 1 ? 0 : 1 });
+          }
+        }
+        return result;
+      }
+
+      function renderScheme() {
+        const selected = state.candidates.find((item) => item.N === state.selectedN);
+        if (!selected) return;
+
+        const { L, a } = state;
+        const { N, b } = selected;
+        const intervals = picketIntervals(L, a, b, N);
+
+        const overlap = (a - b) / 2;
+
+        els.summary.innerHTML = `
+          <div class="summary-item">Количество штакетов<strong>${N}</strong></div>
+          <div class="summary-item">Зазор<strong>${formatNumber(b, 3)}</strong></div>
+          <div class="summary-item">Нахлёст<strong>${formatNumber(overlap, 3)}</strong></div>
+        `;
+
+        const points = new Set([0, L]);
+        intervals.forEach(({ start, end }) => {
+          points.add(start);
+          points.add(end);
+        });
+
+        const sorted = [...points].sort((x, y) => x - y);
+        const segments = [];
+        for (let i = 0; i < sorted.length - 1; i += 1) {
+          const start = sorted[i];
+          const end = sorted[i + 1];
+          if (end > start) segments.push({ start, end, length: end - start });
+        }
+
+        const scale = Math.max(0.16, Math.min(0.32, 900 / L));
+        const schemeHeight = Math.max(320, L * scale);
+        els.scheme.style.height = `${schemeHeight}px`;
+
+        els.scheme.innerHTML = segments.map((segment) => {
+          const mid = (segment.start + segment.end) / 2;
+          const oddOccupied = intervals.some((interval) =>
+            interval.side === 0 && mid >= interval.start && mid < interval.end
+          );
+          const evenOccupied = intervals.some((interval) =>
+            interval.side === 1 && mid >= interval.start && mid < interval.end
+          );
+          const height = (segment.length / L) * 100;
+          return `
+            <div class="scheme-segment" style="height:${height}%" title="${formatNumber(segment.start, 2)}–${formatNumber(segment.end, 2)}">
+              <div class="scheme-lane ${oddOccupied ? 'picket' : ''}"></div>
+              <div class="scheme-lane ${evenOccupied ? 'picket' : ''}"></div>
+            </div>
+          `;
+        }).join('');
+
+        const markers = new Map();
+        intervals.forEach(({ start, end, side }) => {
+          for (const value of [start, end]) {
+            const key = value.toFixed(9);
+            const entry = markers.get(key) || { value, left: false, right: false };
+            if (side === 0) entry.left = true;
+            else entry.right = true;
+            markers.set(key, entry);
+          }
+        });
+
+        for (const { value, left, right } of [...markers.values()].sort((x, y) => x.value - y.value)) {
+          const marker = document.createElement('div');
+          marker.className = 'coordinate-marker';
+          marker.style.top = `${(value / L) * 100}%`;
+          const label = formatNumber(value, 2);
+          marker.innerHTML = `${left ? `<span class="left">${label}</span>` : ''}${right ? `<span class="right">${label}</span>` : ''}`;
+          els.scheme.appendChild(marker);
+        }
+      }
+
+      $('#to-options').addEventListener('click', () => {
+        showError(els.inputError, '');
+        try {
+          const values = readInputs();
+          const result = calculateCandidates(values.L, values.a, values.requestedB);
+          state = {
+            ...state,
+            ...values,
+            candidates: result.rows,
+            selectedN: result.centralN,
+          };
+          saveValues();
+          renderOptions();
+          showScreen(1);
+        } catch (error) {
+          showError(els.inputError, error.message || 'Не удалось выполнить расчёт.');
+        }
+      });
+
+      els.optionsBody.addEventListener('click', (event) => {
+        const row = event.target.closest('tr[data-n]');
+        if (!row) return;
+        state.selectedN = Number(row.dataset.n);
+        const radio = row.querySelector('input[type="radio"]');
+        if (radio) radio.checked = true;
+      });
+
+      els.optionsBody.addEventListener('change', (event) => {
+        if (event.target.matches('input[name="candidate"]')) {
+          state.selectedN = Number(event.target.value);
+        }
+      });
+
+      $('#calculate').addEventListener('click', () => {
+        showError(els.optionsError, '');
+        if (!state.selectedN) {
+          showError(els.optionsError, 'Выберите один из вариантов.');
+          return;
+        }
+        renderScheme();
+        showScreen(2);
+      });
+
+      $('#back-to-input').addEventListener('click', () => showScreen(0));
+      $('#back-to-options').addEventListener('click', () => showScreen(1));
+      $('#start-over').addEventListener('click', () => showScreen(0));
+
+      loadSavedValues();
+    })();
+  </script>
+</body>
+</html>
