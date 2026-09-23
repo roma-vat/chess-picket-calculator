@@ -95,6 +95,12 @@
       margin-top: 26px;
     }
 
+    .scheme-actions {
+      display: flex;
+      justify-content: center;
+      margin: 14px 0 10px;
+    }
+
     .button {
       min-height: 46px;
       border: 0;
@@ -337,6 +343,10 @@
 
         <div id="summary" class="summary"></div>
 
+        <div class="scheme-actions">
+          <button id="mirror-scheme" class="button button-secondary" type="button">ЗЕРКАЛЬНО</button>
+        </div>
+
         <div class="scheme-shell">
           <div class="scheme-frame">
             <div id="scheme" class="vertical-scheme" role="img" aria-label="Схема расположения штакетов"></div>
@@ -380,6 +390,7 @@
         requestedB: null,
         candidates: [],
         selectedN: null,
+        mirrored: false,
       };
 
       function showScreen(index) {
@@ -548,11 +559,13 @@
 
         els.scheme.innerHTML = segments.map((segment) => {
           const mid = (segment.start + segment.end) / 2;
+          const leftSide = state.mirrored ? 1 : 0;
+          const rightSide = state.mirrored ? 0 : 1;
           const oddOccupied = intervals.some((interval) =>
-            interval.side === 0 && mid >= interval.start && mid < interval.end
+            interval.side === leftSide && mid >= interval.start && mid < interval.end
           );
           const evenOccupied = intervals.some((interval) =>
-            interval.side === 1 && mid >= interval.start && mid < interval.end
+            interval.side === rightSide && mid >= interval.start && mid < interval.end
           );
           const height = (segment.length / L) * 100;
           return `
@@ -568,7 +581,8 @@
           for (const value of [start, end]) {
             const key = value.toFixed(9);
             const entry = markers.get(key) || { value, left: false, right: false };
-            if (side === 0) entry.left = true;
+            const visualSide = state.mirrored ? 1 - side : side;
+            if (visualSide === 0) entry.left = true;
             else entry.right = true;
             markers.set(key, entry);
           }
@@ -629,6 +643,10 @@
 
       $('#back-to-input').addEventListener('click', () => showScreen(0));
       $('#back-to-options').addEventListener('click', () => showScreen(1));
+      $('#mirror-scheme').addEventListener('click', () => {
+        state.mirrored = !state.mirrored;
+        renderScheme();
+      });
       $('#start-over').addEventListener('click', () => showScreen(0));
 
       loadSavedValues();
