@@ -197,7 +197,6 @@
     }
 
     .scheme-lane {
-      min-height: 10px;
       border-left: 1px dashed #9aa3ac;
     }
 
@@ -543,8 +542,8 @@
           if (end > start) segments.push({ start, end, length: end - start });
         }
 
-        const scale = Math.max(0.16, Math.min(0.32, 900 / L));
-        const schemeHeight = Math.max(320, L * scale);
+        const scale = 100 / (a + b);
+        const schemeHeight = L * scale;
         els.scheme.style.height = `${schemeHeight}px`;
 
         els.scheme.innerHTML = segments.map((segment) => {
